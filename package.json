@@ -1,0 +1,11 @@
+{
+  "name": "backlink-checker-tool",
+  "version": "1.0.0",
+  "description": "Checks a sheet of live backlinks: HTTP status code, whether the target keyword and client site actually appear on the live page, plus current Domain Rating and organic traffic of each referring domain (via Ahrefs API v3).",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  }
+}

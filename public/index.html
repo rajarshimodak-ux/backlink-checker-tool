@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Backlink Checker</title>
+  <style>
+    :root {
+      --bg: #0f1115; --panel: #171a21; --panel2: #1d212b; --line: #2a2f3a;
+      --text: #e6e8ec; --muted: #9aa3b2; --accent: #ff7a18; --accent2: #2f81f7;
+      --ok: #2ea043; --err: #f85149; --warn: #d29922;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    header { padding: 20px 24px; border-bottom: 1px solid var(--line); }
+    h1 { margin: 0; font-size: 18px; }
+    header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+    main { display: grid; grid-template-columns: 360px 1fr; gap: 0; min-height: calc(100vh - 70px); }
+    .controls { padding: 20px; border-right: 1px solid var(--line); background: var(--panel); overflow-y: auto; }
+    .results { padding: 0; overflow: auto; }
+    label { display: block; font-size: 12px; color: var(--muted); margin: 14px 0 5px; text-transform: uppercase; letter-spacing: .04em; }
+    label:first-child { margin-top: 0; }
+    textarea, input, select {
+      width: 100%; background: var(--panel2); color: var(--text);
+      border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; font-size: 14px;
+    }
+    textarea { min-height: 110px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
+    .sep { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
+    button {
+      cursor: pointer; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; padding: 10px 14px;
+    }
+    .primary { background: var(--accent); color: #161616; width: 100%; margin-top: 18px; }
+    .primary:disabled { opacity: .55; cursor: default; }
+    .ghost { background: var(--panel2); color: var(--text); border: 1px solid var(--line); width: 100%; margin-top: 8px; }
+    .progress { margin-top: 12px; font-size: 12px; color: var(--muted); }
+    .progress .bar { background: var(--panel2); border-radius: 999px; height: 6px; overflow: hidden; margin-top: 6px; }
+    .progress .fill { background: var(--accent); height: 100%; width: 0%; transition: width .2s; }
+    .bar.top { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--bg); z-index: 2; }
+    .bar.top .grow { flex: 1; }
+    .count { color: var(--muted); font-size: 13px; }
+    table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+    th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    th { position: sticky; background: var(--panel); color: var(--muted); font-weight: 600; cursor: pointer; user-select: none; z-index: 1; top: 0; }
+    .filterrow th { top: 29px; padding: 4px 6px; background: var(--panel2); cursor: default; }
+    .filterrow input.fin { width: 100%; min-width: 60px; padding: 4px 6px; font-size: 11px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; color: var(--text); }
+    td.url, td.wide { white-space: normal; max-width: 280px; word-break: break-all; }
+    tbody tr:hover { background: var(--panel); }
+    .pill { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; font-weight: 600; }
+    .pill.ok { background: #0f3c1c; color: #4ecf6c; }
+    .pill.bad { background: #3c1414; color: var(--err); }
+    .pill.warn { background: #3a2c0d; color: var(--warn); }
+    .pill.muted { background: #22262f; color: var(--muted); }
+    .empty { color: var(--muted); padding: 40px 20px; text-align: center; }
+    .err { color: var(--err); }
+    .warnbox { background: #2a1d12; border: 1px solid #5a3a1a; color: #ffcc99; padding: 8px 12px; border-radius: 8px; margin: 12px 20px 0; font-size: 12px; }
+    .gate { position: fixed; inset: 0; background: rgba(8,10,14,.92); display: flex; align-items: center; justify-content: center; z-index: 50; }
+    .gate.hidden { display: none; }
+    .gate .box { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 26px; width: 320px; }
+    .gate h2 { margin: 0 0 4px; font-size: 16px; }
+    .gate p { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+    .gate input { margin-bottom: 10px; }
+    .gate button { width: 100%; background: var(--accent); color: #161616; }
+    .gate .msg { color: var(--err); font-size: 12px; min-height: 16px; margin-top: 8px; }
+    .filename { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div id="gate" class="gate hidden">
+    <div class="box">
+      <h2>Enter password</h2>
+      <p>This tool is password protected.</p>
+      <input id="gatePass" type="password" placeholder="Password" autocomplete="current-password" />
+      <button id="gateBtn">Unlock</button>
+      <div id="gateMsg" class="msg"></div>
+    </div>
+  </div>
+
+  <header>
+    <h1>Backlink Checker</h1>
+    <p>Checks live backlinks for <strong>status code</strong>, whether the <strong>keyword</strong> and <strong>client site</strong> actually appear on the page, and pulls current <strong>DR &amp; organic traffic</strong> of each referring domain.</p>
+  </header>
+
+  <main>
+    <section class="controls">
+      <label for="csvText">Paste CSV</label>
+      <textarea id="csvText" placeholder="WO ID,Domain,Page,Keyword,BL Website,Anchor Text,Content Link,Status,WO Created Date,Due Date,Author,Backlink URL&#10;..."></textarea>
+
+      <label for="csvFile">...or upload a CSV file</label>
+      <input id="csvFile" type="file" accept=".csv,text/csv" />
+      <div id="fileName" class="filename"></div>
+
+      <label for="sheetUrl">...or a public Google Sheet link</label>
+      <input id="sheetUrl" type="text" placeholder="https://docs.google.com/spreadsheets/d/.../edit" />
+      <div class="hint">Sheet must be shared as "Anyone with the link can view". For live write-back into the sheet itself, use the Apps Script in /apps-script instead.</div>
+
+      <hr class="sep" />
+
+      <label>Quality thresholds</label>
+      <div class="row2">
+        <div>
+          <div class="hint">Min DR</div>
+          <input id="minDR" type="number" value="30" min="0" max="100" />
+        </div>
+        <div>
+          <div class="hint">Min monthly traffic</div>
+          <input id="minTraffic" type="number" value="500" min="0" />
+        </div>
+      </div>
+      <div class="hint">Used only to label the "Quality" column — doesn't affect the live-link or content checks.</div>
+
+      <button id="runBtn" class="primary">Run checks</button>
+      <button id="exportBtn" class="ghost" disabled>Export CSV</button>
+
+      <div id="progress" class="progress" style="display:none">
+        <div id="progressText">Checking…</div>
+        <div class="bar"><div id="progressFill" class="fill"></div></div>
+      </div>
+    </section>
+
+    <section class="results">
+      <div class="bar top">
+        <input id="globalSearch" placeholder="Search all columns…" style="max-width:280px" />
+        <div class="grow"></div>
+        <div id="resultCount" class="count"></div>
+      </div>
+      <div id="tableWrap"><div class="empty">Paste or upload a sheet, then click "Run checks".</div></div>
+      <div id="warnings"></div>
+    </section>
+  </main>
+
+  <script>
+    const PASS_KEY = "backlink_checker_pass";
+    const ROW_CHUNK = 10;
+    const DOMAIN_CHUNK = 100;
+
+    const gate = document.getElementById("gate");
+    const gatePass = document.getElementById("gatePass");
+    const gateBtn = document.getElementById("gateBtn");
+    const gateMsg = document.getElementById("gateMsg");
+
+    function getPass() { return sessionStorage.getItem(PASS_KEY) || ""; }
+    function setPass(p) { sessionStorage.setItem(PASS_KEY, p); }
+
+    async function api(path, { method = "GET", body, qs } = {}) {
+      let url = path;
+      if (qs) url += "?" + new URLSearchParams(qs).toString();
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json", "x-app-password": getPass() },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      if (res.status === 401) {
+        gate.classList.remove("hidden");
+        throw new Error("Unauthorized");
+      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      return data;
+    }
+
+    gateBtn.onclick = async () => {
+      setPass(gatePass.value);
+      gateMsg.textContent = "";
+      try {
+        await api("/api/check", { method: "POST", body: { rows: [], domainsNeeded: [] } });
+        gate.classList.add("hidden");
+      } catch (e) {
+        gateMsg.textContent = "Incorrect password.";
+      }
+    };
+
+    // ---------- CSV parsing ----------
+    function parseCSV(text) {
+      const rows = [];
+      let row = [], field = "", inQuotes = false;
+      const t = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+      for (let i = 0; i < t.length; i++) {
+        const c = t[i];
+        if (inQuotes) {
+          if (c === '"') { if (t[i + 1] === '"') { field += '"'; i++; } else inQuotes = false; }
+          else field += c;
+        } else if (c === '"') inQuotes = true;
+        else if (c === ",") { row.push(field); field = ""; }
+        else if (c === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
+        else field += c;
+      }
+      if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
+      if (!rows.length) return [];
+      if (rows[0][0]) rows[0][0] = rows[0][0].replace(/^\uFEFF/, "");
+      const headers = rows.shift().map((h) => h.trim());
+      return rows
+        .filter((r) => r.some((c) => c.trim() !== ""))
+        .map((r) => {
+          const obj = {};
+          headers.forEach((h, idx) => (obj[h] = (r[idx] ?? "").trim()));
+          return obj;
+        });
+    }
+
+    function field(row, ...names) {
+      const keys = Object.keys(row);
+      for (const name of names) {
+        const target = name.trim().toLowerCase();
+        const key = keys.find((k) => k.trim().toLowerCase() === target);
+        if (key != null && row[key]) return String(row[key]).trim();
+      }
+      return "";
+    }
+
+    function hostOf(url) {
+      try { return new URL(/^https?:\/\//i.test(url) ? url : "https://" + url).hostname.replace(/^www\./i, ""); }
+      catch { return String(url || "").replace(/^https?:\/\//i, "").replace(/^www\./i, "").split("/")[0]; }
+    }
+
+    function csvCell(v) {
+      const s = v == null ? "" : String(v);
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }
+
+    // ---------- state ----------
+    let rawRows = [];
+    let displayRows = [];
+    let domainMetricsCache = {};
+    let sortState = { key: null, dir: 1 };
+
+    const csvText = document.getElementById("csvText");
+    const csvFile = document.getElementById("csvFile");
+    const fileName = document.getElementById("fileName");
+    const sheetUrl = document.getElementById("sheetUrl");
+    const runBtn = document.getElementById("runBtn");
+    const exportBtn = document.getElementById("exportBtn");
+    const progress = document.getElementById("progress");
+    const progressText = document.getElementById("progressText");
+    const progressFill = document.getElementById("progressFill");
+    const tableWrap = document.getElementById("tableWrap");
+    const resultCount = document.getElementById("resultCount");
+    const globalSearch = document.getElementById("globalSearch");
+    const warningsEl = document.getElementById("warnings");
+    const minDR = document.getElementById("minDR");
+    const minTraffic = document.getElementById("minTraffic");
+
+    csvFile.onchange = () => { fileName.textContent = csvFile.files[0]?.name || ""; };
+
+    function setProgress(pct, text) {
+      progress.style.display = "block";
+      progressFill.style.width = pct + "%";
+      progressText.textContent = text;
+    }
+
+    async function getInputCSV() {
+      if (csvFile.files[0]) return await csvFile.files[0].text();
+      if (sheetUrl.value.trim()) {
+        setProgress(5, "Loading Google Sheet…");
+        const data = await api("/api/fetch-sheet", { qs: { url: sheetUrl.value.trim() } });
+        return data.csv;
+      }
+      return csvText.value;
+    }
+
+    function quality(dr, traffic) {
+      if (dr == null) return "Unknown";
+      const minD = Number(minDR.value) || 0;
+      const minT = Number(minTraffic.value) || 0;
+      if (dr >= minD && (traffic == null || traffic >= minT)) return "Good";
+      if (dr >= minD / 2) return "Average";
+      return "Low";
+    }
+
+    function buildDisplayRows() {
+      displayRows = rawRows.map((r) => {
+        const domain = field(r.raw, "Domain") || hostOf(field(r.raw, "Backlink URL"));
+        const host = hostOf(domain);
+        const m = domainMetricsCache[host] || {};
+        const c = r.check || {};
+        return {
+          woId: field(r.raw, "WO ID"),
+          domain,
+          page: field(r.raw, "Page"),
+          keyword: field(r.raw, "Keyword"),
+          blWebsite: field(r.raw, "BL Website", "Client Website", "Client URL"),
+          anchorText: field(r.raw, "Anchor Text"),
+          backlinkUrl: field(r.raw, "Backlink URL"),
+          statusLabel: c.statusLabel || "",
+          pageMatch: c.pageMatch || "",
+          keywordFound: c.keywordFound || "",
+          clientSiteFound: c.clientSiteFound || "",
+          anchorTextMatch: c.anchorTextMatch || "",
+          dr: m.domainRating ?? null,
+          traffic: m.orgTraffic ?? null,
+          quality: quality(m.domainRating ?? null, m.orgTraffic ?? null),
+          notes: c.error || c.matchedAnchorText || "",
+        };
+      });
+    }
+
+    const COLS = [
+      { key: "woId", label: "WO ID" },
+      { key: "domain", label: "Domain" },
+      { key: "page", label: "Page" },
+      { key: "keyword", label: "Keyword" },
+      { key: "blWebsite", label: "BL Website" },
+      { key: "anchorText", label: "Anchor Text" },
+      { key: "backlinkUrl", label: "Backlink URL", wide: true },
+      { key: "statusLabel", label: "Status Code" },
+      { key: "pageMatch", label: "Page Match" },
+      { key: "keywordFound", label: "Keyword Found" },
+      { key: "clientSiteFound", label: "Client Site Linked" },
+      { key: "anchorTextMatch", label: "Anchor Match" },
+      { key: "dr", label: "DR", numeric: true },
+      { key: "traffic", label: "Traffic", numeric: true },
+      { key: "quality", label: "Quality" },
+      { key: "notes", label: "Notes", wide: true },
+    ];
+    let colFilters = {};
+
+    function pillClass(key, val) {
+      if (val === "Yes" || val === "200" || val === "Good") return "ok";
+      if (val === "No" || val === "Low" || /^(4|5)\d\d/.test(val) || val === "ERROR" || val === "TIMEOUT") return "bad";
+      if (val === "Partial" || val === "Average" || val === "Mentioned only (no link)" || /\u2192/.test(val)) return "warn";
+      return "muted";
+    }
+
+    function renderTable() {
+      let rows = displayRows.slice();
+
+      for (const [k, v] of Object.entries(colFilters)) {
+        if (!v) continue;
+        rows = rows.filter((r) => String(r[k] ?? "").toLowerCase().includes(v.toLowerCase()));
+      }
+      const g = globalSearch.value.trim().toLowerCase();
+      if (g) rows = rows.filter((r) => COLS.some((c) => String(r[c.key] ?? "").toLowerCase().includes(g)));
+
+      if (sortState.key) {
+        const { key, dir } = sortState;
+        const col = COLS.find((c) => c.key === key);
+        rows.sort((a, b) => {
+          let av = a[key], bv = b[key];
+          if (col?.numeric) { av = av == null ? -Infinity : av; bv = bv == null ? -Infinity : bv; return (av - bv) * dir; }
+          av = String(av ?? ""); bv = String(bv ?? "");
+          return av.localeCompare(bv) * dir;
+        });
+      }
+
+      resultCount.textContent = `${rows.length} of ${displayRows.length} rows`;
+
+      if (rows.length === 0) {
+        tableWrap.innerHTML = '<div class="empty">No rows match.</div>';
+        return;
+      }
+
+      const thead = `
+        <tr>${COLS.map((c) => `<th data-key="${c.key}">${c.label}${sortState.key === c.key ? (sortState.dir === 1 ? " ▲" : " ▼") : ""}</th>`).join("")}</tr>
+        <tr class="filterrow">${COLS.map((c) => `<th><input class="fin" data-key="${c.key}" value="${(colFilters[c.key] || "").replace(/"/g, "&quot;")}" placeholder="filter…" /></th>`).join("")}</tr>
+      `;
+      const tbody = rows
+        .map(
+          (r) => `<tr>${COLS.map((c) => {
+            const v = r[c.key];
+            const isPill = ["statusLabel", "pageMatch", "keywordFound", "clientSiteFound", "anchorTextMatch", "quality"].includes(c.key);
+            const cls = c.wide ? ' class="wide"' : "";
+            if (v == null || v === "") return `<td${cls}></td>`;
+            if (isPill) return `<td${cls}><span class="pill ${pillClass(c.key, String(v))}">${v}</span></td>`;
+            if (c.key === "backlinkUrl") return `<td class="url"><a href="${v}" target="_blank" rel="noopener" style="color:inherit">${v}</a></td>`;
+            return `<td${cls}>${v}</td>`;
+          }).join("")}</tr>`
+        )
+        .join("");
+
+      tableWrap.innerHTML = `<table><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+
+      tableWrap.querySelectorAll("th[data-key]").forEach((th) => {
+        th.onclick = () => {
+          const key = th.dataset.key;
+          sortState = sortState.key === key ? { key, dir: -sortState.dir } : { key, dir: 1 };
+          renderTable();
+        };
+      });
+      tableWrap.querySelectorAll("input.fin").forEach((inp) => {
+        inp.onclick = (e) => e.stopPropagation();
+        inp.oninput = () => { colFilters[inp.dataset.key] = inp.value; renderTable(); };
+      });
+    }
+
+    globalSearch.oninput = renderTable;
+    minDR.oninput = () => { buildDisplayRows(); renderTable(); };
+    minTraffic.oninput = () => { buildDisplayRows(); renderTable(); };
+
+    function chunk(arr, size) {
+      const out = [];
+      for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+      return out;
+    }
+
+    runBtn.onclick = async () => {
+      runBtn.disabled = true;
+      exportBtn.disabled = true;
+      warningsEl.innerHTML = "";
+      try {
+        const csv = await getInputCSV();
+        const parsed = parseCSV(csv || "");
+        if (parsed.length === 0) {
+          tableWrap.innerHTML = '<div class="empty err">No rows found. Paste/upload a CSV or a Google Sheet link.</div>';
+          return;
+        }
+        rawRows = parsed.map((raw) => ({ raw, check: null }));
+        domainMetricsCache = {};
+        colFilters = {};
+        sortState = { key: null, dir: 1 };
+
+        // 1) Resolve DR/traffic for all unique referring domains up front.
+        const uniqueDomains = [...new Set(rawRows.map((r) => hostOf(field(r.raw, "Domain") || field(r.raw, "Backlink URL"))).filter(Boolean))];
+        const domainChunks = chunk(uniqueDomains, DOMAIN_CHUNK);
+        const warnings = [];
+        for (let i = 0; i < domainChunks.length; i++) {
+          setProgress((i / Math.max(domainChunks.length, 1)) * 20, `Looking up DR/traffic… (${i + 1}/${domainChunks.length})`);
+          const data = await api("/api/check", { method: "POST", body: { rows: [], domainsNeeded: domainChunks[i] } });
+          Object.assign(domainMetricsCache, data.domainMetrics || {});
+          if (data.ahrefsWarnings?.length) warnings.push(...data.ahrefsWarnings);
+        }
+
+        // 2) Run live-link checks in row batches.
+        const rowChunks = chunk(rawRows, ROW_CHUNK);
+        for (let i = 0; i < rowChunks.length; i++) {
+          setProgress(20 + (i / Math.max(rowChunks.length, 1)) * 80, `Checking backlinks… (${Math.min((i + 1) * ROW_CHUNK, rawRows.length)}/${rawRows.length})`);
+          const data = await api("/api/check", {
+            method: "POST",
+            body: { rows: rowChunks[i].map((r) => r.raw), resolveRowDomains: false },
+          });
+          data.results.forEach((res, idx) => { rowChunks[i][idx].check = res._check; });
+          buildDisplayRows();
+          renderTable();
+        }
+
+        setProgress(100, "Done.");
+        if (warnings.length) {
+          warningsEl.innerHTML = `<div class="warnbox">${[...new Set(warnings)].join("<br/>")}</div>`;
+        }
+        exportBtn.disabled = false;
+      } catch (e) {
+        warningsEl.innerHTML = `<div class="warnbox err">${e.message}</div>`;
+      } finally {
+        runBtn.disabled = false;
+        setTimeout(() => (progress.style.display = "none"), 1500);
+      }
+    };
+
+    exportBtn.onclick = () => {
+      const header = COLS.map((c) => c.label).join(",");
+      const lines = displayRows.map((r) => COLS.map((c) => csvCell(r[c.key])).join(","));
+      const blob = new Blob([header + "\n" + lines.join("\n")], { type: "text/csv" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `backlink-check-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+    };
+
+    // Show the password gate up front; first API call will confirm/reject it.
+    if (!getPass()) gate.classList.remove("hidden");
+  </script>
+</body>
+</html>
