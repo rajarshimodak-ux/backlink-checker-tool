@@ -68,7 +68,7 @@ export default async function handler(req, res) {
     const domain = field(row, "Domain");
     const page = field(row, "Page");
     const keyword = field(row, "Keyword");
-    const blWebsite = field(row, "BL Website", "Client Website", "Client URL");
+    const blWebsite = field(row, "BL Website", "Client Website", "Client URL", "Client", "Client Website URL", "Client Domain");
     const anchorText = field(row, "Anchor Text");
 
     if (!backlinkUrl) {
