@@ -3,40 +3,55 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Backlink Checker</title>
+  <title>Backlink Checker · Gushwork</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #0f1115; --panel: #171a21; --panel2: #1d212b; --line: #2a2f3a;
-      --text: #e6e8ec; --muted: #9aa3b2; --accent: #ff7a18; --accent2: #2f81f7;
-      --ok: #2ea043; --err: #f85149; --warn: #d29922;
+      --bg: #0b0d11; --panel: #14171d; --panel2: #1a1e26; --line: #272c35;
+      --text: #e8eaed; --muted: #8b93a3; --accent: #0070ff; --accent-dark: #0059cc; --accent2: #2f9bff;
+      --ok: #22c55e; --err: #f43f5e; --warn: #f59e0b;
+      --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0; background: var(--bg); color: var(--text);
-      font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font: 14px/1.5 "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
-    header { padding: 20px 24px; border-bottom: 1px solid var(--line); }
-    h1 { margin: 0; font-size: 18px; }
-    header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
-    main { display: grid; grid-template-columns: 360px 1fr; gap: 0; min-height: calc(100vh - 70px); }
+    header { padding: 18px 24px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; gap: 10px; }
+    .brand { display: flex; align-items: center; gap: 8px; }
+    .brand .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px rgba(0,112,255,.18); }
+    .brand .name { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent2); }
+    h1 { margin: 0; font-size: 18px; font-weight: 700; }
+    header p { margin: 2px 0 0; color: var(--muted); font-size: 13px; width: 100%; flex-basis: 100%; }
+    header .titlewrap { display: flex; flex-direction: column; gap: 2px; }
+    header .toprow { display: flex; align-items: center; gap: 10px; width: 100%; justify-content: space-between; }
+    main { display: grid; grid-template-columns: 360px 1fr; gap: 0; min-height: calc(100vh - 86px); }
     .controls { padding: 20px; border-right: 1px solid var(--line); background: var(--panel); overflow-y: auto; }
     .results { padding: 0; overflow: auto; }
-    label { display: block; font-size: 12px; color: var(--muted); margin: 14px 0 5px; text-transform: uppercase; letter-spacing: .04em; }
+    label { display: block; font-size: 12px; color: var(--muted); margin: 14px 0 5px; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
     label:first-child { margin-top: 0; }
     textarea, input, select {
       width: 100%; background: var(--panel2); color: var(--text);
-      border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; font-size: 14px;
+      border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 9px 10px; font-size: 14px;
+      font-family: inherit;
     }
+    textarea:focus, input:focus, select:focus { outline: none; border-color: var(--accent); }
     textarea { min-height: 110px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
     .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
     .sep { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
     button {
-      cursor: pointer; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; padding: 10px 14px;
+      cursor: pointer; border: none; border-radius: var(--radius-sm); font-weight: 600; font-size: 14px; padding: 10px 14px;
+      font-family: inherit; transition: background .15s, opacity .15s;
     }
-    .primary { background: var(--accent); color: #161616; width: 100%; margin-top: 18px; }
-    .primary:disabled { opacity: .55; cursor: default; }
+    .primary { background: var(--accent); color: #fff; width: 100%; margin-top: 18px; }
+    .primary:hover:not(:disabled) { background: var(--accent-dark); }
+    .primary:disabled { opacity: .5; cursor: default; }
     .ghost { background: var(--panel2); color: var(--text); border: 1px solid var(--line); width: 100%; margin-top: 8px; }
+    .ghost:hover:not(:disabled) { border-color: var(--accent); color: var(--accent2); }
+    .ghost:disabled { opacity: .5; cursor: default; }
     .progress { margin-top: 12px; font-size: 12px; color: var(--muted); }
     .progress .bar { background: var(--panel2); border-radius: 999px; height: 6px; overflow: hidden; margin-top: 6px; }
     .progress .fill { background: var(--accent); height: 100%; width: 0%; transition: width .2s; }
@@ -47,26 +62,39 @@
     th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
     th { position: sticky; background: var(--panel); color: var(--muted); font-weight: 600; cursor: pointer; user-select: none; z-index: 1; top: 0; }
     .filterrow th { top: 29px; padding: 4px 6px; background: var(--panel2); cursor: default; }
-    .filterrow input.fin { width: 100%; min-width: 60px; padding: 4px 6px; font-size: 11px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; color: var(--text); }
+    .filterrow input.fin { width: 100%; min-width: 60px; padding: 4px 6px; font-size: 11px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-sm); color: var(--text); }
     td.url, td.wide { white-space: normal; max-width: 280px; word-break: break-all; }
     tbody tr:hover { background: var(--panel); }
     .pill { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; font-weight: 600; }
-    .pill.ok { background: #0f3c1c; color: #4ecf6c; }
-    .pill.bad { background: #3c1414; color: var(--err); }
+    .pill.ok { background: #0f3c22; color: #4ade80; }
+    .pill.bad { background: #3f1620; color: var(--err); }
     .pill.warn { background: #3a2c0d; color: var(--warn); }
     .pill.muted { background: #22262f; color: var(--muted); }
     .empty { color: var(--muted); padding: 40px 20px; text-align: center; }
     .err { color: var(--err); }
-    .warnbox { background: #2a1d12; border: 1px solid #5a3a1a; color: #ffcc99; padding: 8px 12px; border-radius: 8px; margin: 12px 20px 0; font-size: 12px; }
-    .gate { position: fixed; inset: 0; background: rgba(8,10,14,.92); display: flex; align-items: center; justify-content: center; z-index: 50; }
+    .warnbox { background: #2a1d12; border: 1px solid #5a3a1a; color: #ffcc99; padding: 8px 12px; border-radius: var(--radius-sm); margin: 12px 20px 0; font-size: 12px; }
+    .gate { position: fixed; inset: 0; background: rgba(6,8,12,.94); display: flex; align-items: center; justify-content: center; z-index: 50; }
     .gate.hidden { display: none; }
-    .gate .box { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 26px; width: 320px; }
+    .gate .box { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 26px; width: 320px; }
     .gate h2 { margin: 0 0 4px; font-size: 16px; }
     .gate p { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
     .gate input { margin-bottom: 10px; }
-    .gate button { width: 100%; background: var(--accent); color: #161616; }
+    .gate button { width: 100%; background: var(--accent); color: #fff; }
     .gate .msg { color: var(--err); font-size: 12px; min-height: 16px; margin-top: 8px; }
     .filename { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+    /* History panel */
+    .history { margin-top: 10px; max-height: 220px; overflow-y: auto; border: 1px solid var(--line); border-radius: var(--radius-md); }
+    .history .item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+    .history .item:last-child { border-bottom: none; }
+    .history .meta { flex: 1; min-width: 0; }
+    .history .meta .when { font-size: 12px; color: var(--text); }
+    .history .meta .rows { font-size: 11px; color: var(--muted); }
+    .history .dl { background: var(--panel2); color: var(--accent2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 5px 9px; font-size: 11px; font-weight: 600; width: auto; margin: 0; }
+    .history .dl:hover { border-color: var(--accent); }
+    .history .empty-hist { color: var(--muted); font-size: 12px; padding: 14px 10px; text-align: center; }
+    .clearhist { background: none; color: var(--muted); border: none; width: auto; padding: 0; margin: 6px 0 0; font-size: 11px; text-decoration: underline; font-weight: 500; }
+    .clearhist:hover { color: var(--err); }
   </style>
 </head>
 <body>
@@ -81,8 +109,13 @@
   </div>
 
   <header>
-    <h1>Backlink Checker</h1>
-    <p>Checks live backlinks for <strong>status code</strong>, whether the <strong>keyword</strong> and <strong>client site</strong> actually appear on the page, and pulls current <strong>DR &amp; organic traffic</strong> of each referring domain.</p>
+    <div class="toprow">
+      <div class="titlewrap">
+        <div class="brand"><span class="dot"></span><span class="name">Gushwork</span></div>
+        <h1>Backlink Checker</h1>
+      </div>
+    </div>
+    <p>Checks live backlinks for <strong>status code</strong>, whether the <strong>keyword</strong> and <strong>client site</strong> actually appear on the page, and pulls current <strong>DR &amp; organic traffic</strong> of each referring domain. Works with full sheets or a simple <strong>Client + Live Link</strong> only sheet — the referring domain is auto-detected from the live link.</p>
   </header>
 
   <main>
@@ -120,6 +153,12 @@
         <div id="progressText">Checking…</div>
         <div class="bar"><div id="progressFill" class="fill"></div></div>
       </div>
+
+      <hr class="sep" />
+
+      <label>History <span style="text-transform:none;font-weight:400;color:var(--muted)">(saved in this browser)</span></label>
+      <div id="historyList" class="history"><div class="empty-hist">No past runs yet.</div></div>
+      <button id="clearHistBtn" class="clearhist">Clear history</button>
     </section>
 
     <section class="results">
@@ -135,6 +174,8 @@
 
   <script>
     const PASS_KEY = "backlink_checker_pass";
+    const HISTORY_KEY = "backlink_checker_history";
+    const HISTORY_MAX = 15;
     const ROW_CHUNK = 10;
     const DOMAIN_CHUNK = 100;
 
@@ -243,6 +284,8 @@
     const warningsEl = document.getElementById("warnings");
     const minDR = document.getElementById("minDR");
     const minTraffic = document.getElementById("minTraffic");
+    const historyList = document.getElementById("historyList");
+    const clearHistBtn = document.getElementById("clearHistBtn");
 
     csvFile.onchange = () => { fileName.textContent = csvFile.files[0]?.name || ""; };
 
@@ -282,7 +325,7 @@
           domain,
           page: field(r.raw, "Page"),
           keyword: field(r.raw, "Keyword"),
-          blWebsite: field(r.raw, "BL Website", "Client Website", "Client URL"),
+          blWebsite: field(r.raw, "BL Website", "Client Website", "Client URL", "Client", "Client Website URL", "Client Domain"),
           anchorText: field(r.raw, "Anchor Text"),
           backlinkUrl: field(r.raw, "Backlink URL"),
           statusLabel: c.statusLabel || "",
@@ -396,6 +439,72 @@
       return out;
     }
 
+    // ---------- CSV export + run history ----------
+    function buildCSVString() {
+      const header = COLS.map((c) => c.label).join(",");
+      const lines = displayRows.map((r) => COLS.map((c) => csvCell(r[c.key])).join(","));
+      return header + "\n" + lines.join("\n");
+    }
+
+    function downloadCSV(csvStr, filename) {
+      const blob = new Blob([csvStr], { type: "text/csv" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    }
+
+    function loadHistory() {
+      try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); }
+      catch { return []; }
+    }
+
+    function saveHistory(list) {
+      // Drop oldest entries first if storage is full, rather than losing the newest run.
+      while (list.length) {
+        try { localStorage.setItem(HISTORY_KEY, JSON.stringify(list)); return; }
+        catch { list = list.slice(1); }
+      }
+      try { localStorage.removeItem(HISTORY_KEY); } catch {}
+    }
+
+    function addHistoryEntry(csvStr, rowCount) {
+      const list = loadHistory();
+      list.unshift({ id: Date.now(), ts: new Date().toISOString(), rows: rowCount, csv: csvStr });
+      saveHistory(list.slice(0, HISTORY_MAX));
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const list = loadHistory();
+      if (list.length === 0) {
+        historyList.innerHTML = '<div class="empty-hist">No past runs yet.</div>';
+        return;
+      }
+      historyList.innerHTML = list
+        .map((h) => {
+          const when = new Date(h.ts).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+          return `<div class="item">
+            <div class="meta"><div class="when">${when}</div><div class="rows">${h.rows} rows</div></div>
+            <button class="dl" data-id="${h.id}">Download</button>
+          </div>`;
+        })
+        .join("");
+      historyList.querySelectorAll("button.dl").forEach((btn) => {
+        btn.onclick = () => {
+          const entry = loadHistory().find((h) => String(h.id) === btn.dataset.id);
+          if (!entry) return;
+          downloadCSV(entry.csv, `backlink-check-${entry.ts.slice(0, 10)}-${entry.id}.csv`);
+        };
+      });
+    }
+
+    clearHistBtn.onclick = () => {
+      localStorage.removeItem(HISTORY_KEY);
+      renderHistory();
+    };
+
     runBtn.onclick = async () => {
       runBtn.disabled = true;
       exportBtn.disabled = true;
@@ -441,6 +550,7 @@
           warningsEl.innerHTML = `<div class="warnbox">${[...new Set(warnings)].join("<br/>")}</div>`;
         }
         exportBtn.disabled = false;
+        addHistoryEntry(buildCSVString(), displayRows.length);
       } catch (e) {
         warningsEl.innerHTML = `<div class="warnbox err">${e.message}</div>`;
       } finally {
@@ -450,17 +560,12 @@
     };
 
     exportBtn.onclick = () => {
-      const header = COLS.map((c) => c.label).join(",");
-      const lines = displayRows.map((r) => COLS.map((c) => csvCell(r[c.key])).join(","));
-      const blob = new Blob([header + "\n" + lines.join("\n")], { type: "text/csv" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `backlink-check-${new Date().toISOString().slice(0, 10)}.csv`;
-      a.click();
+      downloadCSV(buildCSVString(), `backlink-check-${new Date().toISOString().slice(0, 10)}.csv`);
     };
 
     // Show the password gate up front; first API call will confirm/reject it.
     if (!getPass()) gate.classList.remove("hidden");
+    renderHistory();
   </script>
 </body>
 </html>

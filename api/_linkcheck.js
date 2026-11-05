@@ -62,17 +62,28 @@ function similarity(a, b) {
   return overlap / Math.min(ta.size, tb.size);
 }
 
+// A generic non-browser UA string gets auto-blocked by a lot of Cloudflare/WAF
+// configs regardless of intent. Presenting as an ordinary desktop browser avoids
+// that false-positive class of blocks for these public, already-published pages.
+const BROWSER_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9",
+};
+
 async function fetchManual(url, signal) {
   const res = await fetch(url, {
     method: "GET",
     redirect: "manual",
     signal,
-    headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; BacklinkChecker/1.0; +https://gushwork.com)",
-      Accept: "text/html,application/xhtml+xml",
-    },
+    headers: BROWSER_HEADERS,
   });
   return res;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export async function checkBacklink({ url, keyword, page, clientSite, anchorText }) {
@@ -100,6 +111,16 @@ export async function checkBacklink({ url, keyword, page, clientSite, anchorText
       }
       finalRes = res;
       break;
+    }
+
+    // A single retry after a short pause for 403/429 — these are sometimes a
+    // transient rate-limit or a one-off bot-filter hiccup rather than a hard wall.
+    if (finalRes && (finalRes.status === 403 || finalRes.status === 429)) {
+      finalRes.body?.cancel?.().catch(() => {});
+      await sleep(1200);
+      const retryRes = await fetchManual(currentUrl, controller.signal);
+      chain.push(retryRes.status);
+      finalRes = retryRes;
     }
 
     if (!finalRes) {
@@ -145,7 +166,10 @@ export async function checkBacklink({ url, keyword, page, clientSite, anchorText
         clientSiteFound: "N/A",
         matchedAnchorText: "",
         anchorTextMatch: "N/A",
-        error: null,
+        error:
+          finalStatus === 403 || finalStatus === 429
+            ? "Site blocked automated access (bot-protection) — verify the client link manually in a browser"
+            : null,
       };
     }
 
