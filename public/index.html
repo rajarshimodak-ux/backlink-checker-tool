@@ -19,7 +19,7 @@
       margin: 0; background: var(--bg); color: var(--text);
       font: 14px/1.5 "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
-    header { padding: 18px 24px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; gap: 10px; }
+    header { padding: 18px 24px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
     .brand { display: flex; align-items: center; gap: 8px; }
     .brand .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px rgba(0,112,255,.18); }
     .brand .name { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent2); }
@@ -30,6 +30,18 @@
     main { display: grid; grid-template-columns: 360px 1fr; gap: 0; min-height: calc(100vh - 86px); }
     .controls { padding: 20px; border-right: 1px solid var(--line); background: var(--panel); overflow-y: auto; }
     .results { padding: 0; overflow: auto; }
+
+    .steps { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+    .step { display: flex; gap: 10px; align-items: flex-start; }
+    .step .num {
+      flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--panel2);
+      border: 1px solid var(--line); color: var(--accent2); font-size: 11px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; margin-top: 1px;
+    }
+    .step .txt { font-size: 12.5px; color: var(--text); }
+    .step .txt b { color: var(--accent2); }
+    .step .txt .sub { color: var(--muted); font-size: 11.5px; margin-top: 1px; }
+
     label { display: block; font-size: 12px; color: var(--muted); margin: 14px 0 5px; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
     label:first-child { margin-top: 0; }
     textarea, input, select {
@@ -38,13 +50,13 @@
       font-family: inherit;
     }
     textarea:focus, input:focus, select:focus { outline: none; border-color: var(--accent); }
-    textarea { min-height: 110px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+    textarea { min-height: 90px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
     .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
     .sep { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
     button {
       cursor: pointer; border: none; border-radius: var(--radius-sm); font-weight: 600; font-size: 14px; padding: 10px 14px;
-      font-family: inherit; transition: background .15s, opacity .15s;
+      font-family: inherit; transition: background .15s, opacity .15s, border-color .15s;
     }
     .primary { background: var(--accent); color: #fff; width: 100%; margin-top: 18px; }
     .primary:hover:not(:disabled) { background: var(--accent-dark); }
@@ -63,14 +75,15 @@
     th { position: sticky; background: var(--panel); color: var(--muted); font-weight: 600; cursor: pointer; user-select: none; z-index: 1; top: 0; }
     .filterrow th { top: 29px; padding: 4px 6px; background: var(--panel2); cursor: default; }
     .filterrow input.fin { width: 100%; min-width: 60px; padding: 4px 6px; font-size: 11px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-sm); color: var(--text); }
-    td.url, td.wide { white-space: normal; max-width: 280px; word-break: break-all; }
+    td.url, td.wide { white-space: normal; max-width: 300px; word-break: break-all; }
     tbody tr:hover { background: var(--panel); }
     .pill { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; font-weight: 600; }
     .pill.ok { background: #0f3c22; color: #4ade80; }
     .pill.bad { background: #3f1620; color: var(--err); }
     .pill.warn { background: #3a2c0d; color: var(--warn); }
     .pill.muted { background: #22262f; color: var(--muted); }
-    .empty { color: var(--muted); padding: 40px 20px; text-align: center; }
+    .empty { color: var(--muted); padding: 48px 24px; text-align: center; font-size: 13.5px; }
+    .empty .big { font-size: 15px; color: var(--text); font-weight: 600; margin-bottom: 6px; }
     .err { color: var(--err); }
     .warnbox { background: #2a1d12; border: 1px solid #5a3a1a; color: #ffcc99; padding: 8px 12px; border-radius: var(--radius-sm); margin: 12px 20px 0; font-size: 12px; }
     .gate { position: fixed; inset: 0; background: rgba(6,8,12,.94); display: flex; align-items: center; justify-content: center; z-index: 50; }
@@ -95,6 +108,15 @@
     .history .empty-hist { color: var(--muted); font-size: 12px; padding: 14px 10px; text-align: center; }
     .clearhist { background: none; color: var(--muted); border: none; width: auto; padding: 0; margin: 6px 0 0; font-size: 11px; text-decoration: underline; font-weight: 500; }
     .clearhist:hover { color: var(--err); }
+
+    /* Summary stat cards */
+    .summary { display: flex; gap: 10px; padding: 14px 20px; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
+    .stat { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 10px 14px; min-width: 110px; }
+    .stat .n { font-size: 20px; font-weight: 700; }
+    .stat .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
+    .stat.ok .n { color: #4ade80; }
+    .stat.bad .n { color: var(--err); }
+    .stat.warn .n { color: var(--warn); }
   </style>
 </head>
 <body>
@@ -115,13 +137,20 @@
         <h1>Backlink Checker</h1>
       </div>
     </div>
-    <p>Checks live backlinks for <strong>status code</strong>, whether the <strong>keyword</strong> and <strong>client site</strong> actually appear on the page, and pulls current <strong>DR &amp; organic traffic</strong> of each referring domain. Works with full sheets or a simple <strong>Client + Live Link</strong> only sheet — the referring domain is auto-detected from the live link.</p>
+    <p>Paste a sheet with just <strong>Client Name</strong> and <strong>Live Link</strong> — we check each link's status code, confirm the client is actually linked on the live page, and pull the referring domain's DR &amp; organic traffic automatically. No other columns needed.</p>
   </header>
 
   <main>
     <section class="controls">
-      <label for="csvText">Paste CSV</label>
-      <textarea id="csvText" placeholder="WO ID,Domain,Page,Keyword,BL Website,Anchor Text,Content Link,Status,WO Created Date,Due Date,Author,Backlink URL&#10;..."></textarea>
+      <div class="steps">
+        <div class="step"><div class="num">1</div><div class="txt"><b>Add your sheet</b><div class="sub">Paste, upload a CSV, or link a Google Sheet below</div></div></div>
+        <div class="step"><div class="num">2</div><div class="txt"><b>Run checks</b><div class="sub">We check every live link and referring domain automatically</div></div></div>
+        <div class="step"><div class="num">3</div><div class="txt"><b>Export or revisit</b><div class="sub">Download the results now, or grab them later from History</div></div></div>
+      </div>
+
+      <label for="csvText">Paste your sheet</label>
+      <textarea id="csvText" placeholder="Client Name,Live Link&#10;acme.com,https://example.com/blog/our-review-of-acme&#10;globex.com,https://anotherblog.com/best-tools-2026"></textarea>
+      <div class="hint">Just two columns: <strong>Client Name</strong> and <strong>Live Link</strong>.</div>
 
       <label for="csvFile">...or upload a CSV file</label>
       <input id="csvFile" type="file" accept=".csv,text/csv" />
@@ -144,7 +173,7 @@
           <input id="minTraffic" type="number" value="500" min="0" />
         </div>
       </div>
-      <div class="hint">Used only to label the "Quality" column — doesn't affect the live-link or content checks.</div>
+      <div class="hint">Used only to label the "Quality" column — doesn't affect the live-link check itself.</div>
 
       <button id="runBtn" class="primary">Run checks</button>
       <button id="exportBtn" class="ghost" disabled>Export CSV</button>
@@ -162,12 +191,18 @@
     </section>
 
     <section class="results">
+      <div id="summary" class="summary" style="display:none"></div>
       <div class="bar top">
-        <input id="globalSearch" placeholder="Search all columns…" style="max-width:280px" />
+        <input id="globalSearch" placeholder="Search client, link, status…" style="max-width:280px" />
         <div class="grow"></div>
         <div id="resultCount" class="count"></div>
       </div>
-      <div id="tableWrap"><div class="empty">Paste or upload a sheet, then click "Run checks".</div></div>
+      <div id="tableWrap">
+        <div class="empty">
+          <div class="big">Add your Client Name + Live Link rows on the left</div>
+          Then click "Run checks" to verify every live link and pull DR &amp; traffic.
+        </div>
+      </div>
       <div id="warnings"></div>
     </section>
   </main>
@@ -243,6 +278,9 @@
         });
     }
 
+    const CLIENT_ALIASES = ["Client", "Client Name", "BL Website", "Client Website", "Client URL", "Client Website URL", "Client Domain"];
+    const LINK_ALIASES = ["Live Link", "Live URL", "Backlink URL"];
+
     function field(row, ...names) {
       const keys = Object.keys(row);
       for (const name of names) {
@@ -279,6 +317,7 @@
     const progressText = document.getElementById("progressText");
     const progressFill = document.getElementById("progressFill");
     const tableWrap = document.getElementById("tableWrap");
+    const summaryEl = document.getElementById("summary");
     const resultCount = document.getElementById("resultCount");
     const globalSearch = document.getElementById("globalSearch");
     const warningsEl = document.getElementById("warnings");
@@ -316,44 +355,32 @@
 
     function buildDisplayRows() {
       displayRows = rawRows.map((r) => {
-        const domain = field(r.raw, "Domain") || hostOf(field(r.raw, "Backlink URL"));
-        const host = hostOf(domain);
-        const m = domainMetricsCache[host] || {};
+        const backlinkUrl = field(r.raw, ...LINK_ALIASES);
+        const referringDomain = hostOf(field(r.raw, "Domain") || backlinkUrl);
+        const m = domainMetricsCache[referringDomain] || {};
         const c = r.check || {};
         return {
-          woId: field(r.raw, "WO ID"),
-          domain,
-          page: field(r.raw, "Page"),
-          keyword: field(r.raw, "Keyword"),
-          blWebsite: field(r.raw, "BL Website", "Client Website", "Client URL", "Client", "Client Website URL", "Client Domain"),
-          anchorText: field(r.raw, "Anchor Text"),
-          backlinkUrl: field(r.raw, "Backlink URL"),
+          client: field(r.raw, ...CLIENT_ALIASES),
+          referringDomain,
+          backlinkUrl,
           statusLabel: c.statusLabel || "",
-          pageMatch: c.pageMatch || "",
-          keywordFound: c.keywordFound || "",
           clientSiteFound: c.clientSiteFound || "",
-          anchorTextMatch: c.anchorTextMatch || "",
+          matchedAnchorText: c.matchedAnchorText || "",
           dr: m.domainRating ?? null,
           traffic: m.orgTraffic ?? null,
           quality: quality(m.domainRating ?? null, m.orgTraffic ?? null),
-          notes: c.error || c.matchedAnchorText || "",
+          notes: c.error || "",
         };
       });
     }
 
     const COLS = [
-      { key: "woId", label: "WO ID" },
-      { key: "domain", label: "Domain" },
-      { key: "page", label: "Page" },
-      { key: "keyword", label: "Keyword" },
-      { key: "blWebsite", label: "BL Website" },
-      { key: "anchorText", label: "Anchor Text" },
-      { key: "backlinkUrl", label: "Backlink URL", wide: true },
+      { key: "client", label: "Client" },
+      { key: "referringDomain", label: "Referring Domain" },
+      { key: "backlinkUrl", label: "Live Link", wide: true },
       { key: "statusLabel", label: "Status Code" },
-      { key: "pageMatch", label: "Page Match" },
-      { key: "keywordFound", label: "Keyword Found" },
-      { key: "clientSiteFound", label: "Client Site Linked" },
-      { key: "anchorTextMatch", label: "Anchor Match" },
+      { key: "clientSiteFound", label: "Client Linked" },
+      { key: "matchedAnchorText", label: "Linked Anchor Text", wide: true },
       { key: "dr", label: "DR", numeric: true },
       { key: "traffic", label: "Traffic", numeric: true },
       { key: "quality", label: "Quality" },
@@ -366,6 +393,26 @@
       if (val === "No" || val === "Low" || /^(4|5)\d\d/.test(val) || val === "ERROR" || val === "TIMEOUT") return "bad";
       if (val === "Partial" || val === "Average" || val === "Mentioned only (no link)" || /\u2192/.test(val)) return "warn";
       return "muted";
+    }
+
+    function renderSummary() {
+      if (displayRows.length === 0) {
+        summaryEl.style.display = "none";
+        return;
+      }
+      const total = displayRows.length;
+      const live = displayRows.filter((r) => r.statusLabel === "200" || /200$/.test(r.statusLabel)).length;
+      const linked = displayRows.filter((r) => r.clientSiteFound === "Yes").length;
+      const broken = displayRows.filter((r) => /^(4|5)\d\d/.test(r.statusLabel)).length;
+      const blocked = displayRows.filter((r) => r.statusLabel === "403" || r.statusLabel === "429").length;
+      summaryEl.style.display = "flex";
+      summaryEl.innerHTML = `
+        <div class="stat"><div class="n">${total}</div><div class="l">Total rows</div></div>
+        <div class="stat ok"><div class="n">${live}</div><div class="l">Live (200)</div></div>
+        <div class="stat ok"><div class="n">${linked}</div><div class="l">Client linked</div></div>
+        <div class="stat bad"><div class="n">${broken}</div><div class="l">Broken (4xx/5xx)</div></div>
+        <div class="stat warn"><div class="n">${blocked}</div><div class="l">Blocked / unverifiable</div></div>
+      `;
     }
 
     function renderTable() {
@@ -404,7 +451,7 @@
         .map(
           (r) => `<tr>${COLS.map((c) => {
             const v = r[c.key];
-            const isPill = ["statusLabel", "pageMatch", "keywordFound", "clientSiteFound", "anchorTextMatch", "quality"].includes(c.key);
+            const isPill = ["statusLabel", "clientSiteFound", "quality"].includes(c.key);
             const cls = c.wide ? ' class="wide"' : "";
             if (v == null || v === "") return `<td${cls}></td>`;
             if (isPill) return `<td${cls}><span class="pill ${pillClass(c.key, String(v))}">${v}</span></td>`;
@@ -430,8 +477,8 @@
     }
 
     globalSearch.oninput = renderTable;
-    minDR.oninput = () => { buildDisplayRows(); renderTable(); };
-    minTraffic.oninput = () => { buildDisplayRows(); renderTable(); };
+    minDR.oninput = () => { buildDisplayRows(); renderTable(); renderSummary(); };
+    minTraffic.oninput = () => { buildDisplayRows(); renderTable(); renderSummary(); };
 
     function chunk(arr, size) {
       const out = [];
@@ -513,16 +560,24 @@
         const csv = await getInputCSV();
         const parsed = parseCSV(csv || "");
         if (parsed.length === 0) {
-          tableWrap.innerHTML = '<div class="empty err">No rows found. Paste/upload a CSV or a Google Sheet link.</div>';
+          tableWrap.innerHTML = '<div class="empty err">No rows found. Paste/upload a sheet with Client Name and Live Link columns.</div>';
           return;
         }
+
+        // Friendly pre-flight check: make sure we can actually find a live-link column.
+        const missingLink = parsed.filter((raw) => !field(raw, ...LINK_ALIASES)).length;
+        if (missingLink === parsed.length) {
+          tableWrap.innerHTML = '<div class="empty err">Couldn\'t find a "Live Link" column in your sheet. Make sure one column is named <strong>Live Link</strong> (or Live URL / Backlink URL).</div>';
+          return;
+        }
+
         rawRows = parsed.map((raw) => ({ raw, check: null }));
         domainMetricsCache = {};
         colFilters = {};
         sortState = { key: null, dir: 1 };
 
         // 1) Resolve DR/traffic for all unique referring domains up front.
-        const uniqueDomains = [...new Set(rawRows.map((r) => hostOf(field(r.raw, "Domain") || field(r.raw, "Backlink URL"))).filter(Boolean))];
+        const uniqueDomains = [...new Set(rawRows.map((r) => hostOf(field(r.raw, "Domain") || field(r.raw, ...LINK_ALIASES))).filter(Boolean))];
         const domainChunks = chunk(uniqueDomains, DOMAIN_CHUNK);
         const warnings = [];
         for (let i = 0; i < domainChunks.length; i++) {
@@ -543,6 +598,7 @@
           data.results.forEach((res, idx) => { rowChunks[i][idx].check = res._check; });
           buildDisplayRows();
           renderTable();
+          renderSummary();
         }
 
         setProgress(100, "Done.");
