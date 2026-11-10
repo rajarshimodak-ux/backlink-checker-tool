@@ -64,7 +64,7 @@ export default async function handler(req, res) {
 
   // --- Live link checks (status code, keyword/page/client-site detection) ---
   const results = await mapLimit(rows, CONCURRENCY, async (row) => {
-    const backlinkUrl = field(row, "Backlink URL", "Live URL", "Live Link");
+    const backlinkUrl = field(row, "Backlink URL", "Live URL", "Live Link", "Live Links");
     const domain = field(row, "Domain");
     const page = field(row, "Page");
     const keyword = field(row, "Keyword");
