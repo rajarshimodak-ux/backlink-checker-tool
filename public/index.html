@@ -353,6 +353,19 @@
       return "Low";
     }
 
+    // Normalize a URL for duplicate comparison: trim, drop trailing slash, lowercase host+path.
+    function normalizeLink(url) {
+      const s = String(url || "").trim().replace(/\/+$/, "");
+      try {
+        const u = new URL(s);
+        return (u.hostname.replace(/^www\./i, "") + u.pathname.replace(/\/+$/, "")).toLowerCase();
+      } catch {
+        return s.toLowerCase();
+      }
+    }
+
+    let duplicateLinks = new Set();
+
     function buildDisplayRows() {
       displayRows = rawRows.map((r) => {
         const backlinkUrl = field(r.raw, ...LINK_ALIASES);
@@ -363,6 +376,7 @@
           client: field(r.raw, ...CLIENT_ALIASES),
           referringDomain,
           backlinkUrl,
+          duplicate: duplicateLinks.has(normalizeLink(backlinkUrl)) ? "Yes" : "No",
           statusLabel: c.statusLabel || "",
           clientSiteFound: c.clientSiteFound || "",
           matchedAnchorText: c.matchedAnchorText || "",
@@ -378,6 +392,7 @@
       { key: "client", label: "Client" },
       { key: "referringDomain", label: "Referring Domain" },
       { key: "backlinkUrl", label: "Live Link", wide: true },
+      { key: "duplicate", label: "Duplicate" },
       { key: "statusLabel", label: "Status Code" },
       { key: "clientSiteFound", label: "Client Linked" },
       { key: "matchedAnchorText", label: "Linked Anchor Text", wide: true },
@@ -389,6 +404,8 @@
     let colFilters = {};
 
     function pillClass(key, val) {
+      if (val === "Yes" && key === "duplicate") return "bad";
+      if (val.startsWith("Rejected")) return "bad";
       if (val === "Yes" || val === "200" || val === "Good") return "ok";
       if (val === "No" || val === "Low" || /^(4|5)\d\d/.test(val) || val === "ERROR" || val === "TIMEOUT") return "bad";
       if (val === "Partial" || val === "Average" || val === "Mentioned only (no link)" || /\u2192/.test(val)) return "warn";
@@ -405,6 +422,8 @@
       const linked = displayRows.filter((r) => r.clientSiteFound === "Yes").length;
       const broken = displayRows.filter((r) => /^(4|5)\d\d/.test(r.statusLabel)).length;
       const blocked = displayRows.filter((r) => r.statusLabel === "403" || r.statusLabel === "429").length;
+      const duplicates = displayRows.filter((r) => r.duplicate === "Yes").length;
+      const rejected = displayRows.filter((r) => r.clientSiteFound.startsWith("Rejected")).length;
       summaryEl.style.display = "flex";
       summaryEl.innerHTML = `
         <div class="stat"><div class="n">${total}</div><div class="l">Total rows</div></div>
@@ -412,6 +431,8 @@
         <div class="stat ok"><div class="n">${linked}</div><div class="l">Client linked</div></div>
         <div class="stat bad"><div class="n">${broken}</div><div class="l">Broken (4xx/5xx)</div></div>
         <div class="stat warn"><div class="n">${blocked}</div><div class="l">Blocked / unverifiable</div></div>
+        <div class="stat bad"><div class="n">${duplicates}</div><div class="l">Duplicate links</div></div>
+        <div class="stat bad"><div class="n">${rejected}</div><div class="l">Rejected (sign-in wall)</div></div>
       `;
     }
 
@@ -451,7 +472,7 @@
         .map(
           (r) => `<tr>${COLS.map((c) => {
             const v = r[c.key];
-            const isPill = ["statusLabel", "clientSiteFound", "quality"].includes(c.key);
+            const isPill = ["statusLabel", "clientSiteFound", "quality", "duplicate"].includes(c.key);
             const cls = c.wide ? ' class="wide"' : "";
             if (v == null || v === "") return `<td${cls}></td>`;
             if (isPill) return `<td${cls}><span class="pill ${pillClass(c.key, String(v))}">${v}</span></td>`;
@@ -575,6 +596,15 @@
         domainMetricsCache = {};
         colFilters = {};
         sortState = { key: null, dir: 1 };
+
+        // Flag any Live Link that appears more than once in the sheet (double-billing risk).
+        const linkTally = {};
+        for (const raw of parsed) {
+          const key = normalizeLink(field(raw, ...LINK_ALIASES));
+          if (!key) continue;
+          linkTally[key] = (linkTally[key] || 0) + 1;
+        }
+        duplicateLinks = new Set(Object.keys(linkTally).filter((k) => linkTally[k] > 1));
 
         // 1) Resolve DR/traffic for all unique referring domains up front.
         const uniqueDomains = [...new Set(rawRows.map((r) => hostOf(field(r.raw, "Domain") || field(r.raw, ...LINK_ALIASES))).filter(Boolean))];

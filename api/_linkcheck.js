@@ -86,6 +86,31 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Pages that gate their real content behind a login/paywall can't be verified —
+// we can't see what's actually on them, so they get rejected rather than marked live.
+const SIGNIN_PATTERNS = [
+  /sign in to (continue|read|view|access)/i,
+  /log ?in to (continue|read|view|access)/i,
+  /please (sign in|log ?in) to/i,
+  /you (must|need to) (be )?(sign|log)(ged)? ?in/i,
+  /this content is for (subscribers|members) only/i,
+  /subscribe to (continue|read|unlock)/i,
+  /create a (free )?account to (continue|read)/i,
+  /member(s)? only content/i,
+  /login required/i,
+  /access denied.*log ?in/i,
+  /this article is reserved for (subscribers|members)/i,
+];
+
+function looksLikeSignInWall(title, plainText) {
+  const hay = `${title} ${plainText}`;
+  const hit = SIGNIN_PATTERNS.some((re) => re.test(hay));
+  if (!hit) return false;
+  // Guard against false positives on long real articles that merely mention a
+  // sign-in CTA somewhere — a genuine wall page has very little real content.
+  return plainText.length < 1500 || /^(sign ?in|log ?in|member login)/i.test(title.trim());
+}
+
 export async function checkBacklink({ url, keyword, page, clientSite, anchorText }) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -176,6 +201,23 @@ export async function checkBacklink({ url, keyword, page, clientSite, anchorText
     const title = extractTitle(body);
     const plainText = stripTags(body);
     const anchors = extractAnchors(body);
+
+    if (looksLikeSignInWall(title, plainText)) {
+      return {
+        requestedUrl: url,
+        finalUrl: currentUrl,
+        statusLabel,
+        finalStatus,
+        live: true,
+        pageTitle: title,
+        keywordFound: "N/A",
+        pageMatch: "N/A",
+        clientSiteFound: "Rejected (sign-in wall)",
+        matchedAnchorText: "",
+        anchorTextMatch: "N/A",
+        error: "Page requires sign-in/login to view content — rejected, could not verify the client link",
+      };
+    }
 
     // Keyword check: exact phrase, else "Partial" if every significant word shows up somewhere.
     let keywordFound = "N/A";
