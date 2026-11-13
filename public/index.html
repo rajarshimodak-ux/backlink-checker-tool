@@ -245,6 +245,17 @@
       <div id="summary" class="summary" style="display:none"></div>
       <div class="bar top">
         <input id="globalSearch" placeholder="Search client, link, status…" style="max-width:280px" />
+        <select id="quickFilter" style="max-width:190px">
+          <option value="all">Filter: All rows</option>
+          <option value="live">Live (200)</option>
+          <option value="broken">Broken (4xx/5xx)</option>
+          <option value="blocked">Blocked / unverifiable</option>
+          <option value="linked">Client linked</option>
+          <option value="notlinked">Client not linked</option>
+          <option value="duplicate">Duplicate links</option>
+          <option value="rejected">Rejected</option>
+        </select>
+        <button id="exportFilteredBtn" class="ghost" style="width:auto;margin:0;" disabled>Export filtered</button>
         <div class="grow"></div>
         <div id="resultCount" class="count"></div>
       </div>
@@ -384,6 +395,8 @@
     const summaryEl = document.getElementById("summary");
     const resultCount = document.getElementById("resultCount");
     const globalSearch = document.getElementById("globalSearch");
+    const quickFilter = document.getElementById("quickFilter");
+    const exportFilteredBtn = document.getElementById("exportFilteredBtn");
     const warningsEl = document.getElementById("warnings");
     const minDR = document.getElementById("minDR");
     const minTraffic = document.getElementById("minTraffic");
@@ -529,9 +542,25 @@
       `;
     }
 
-    function renderTable() {
+    // Preset filters for the "Filter" dropdown — quick one-click views on top of
+    // the per-column filter boxes and the free-text search.
+    const QUICK_FILTERS = {
+      all: () => true,
+      live: (r) => r.statusLabel === "200" || /200$/.test(r.statusLabel),
+      broken: (r) => /^(4|5)\d\d/.test(r.statusLabel),
+      blocked: (r) => r.statusLabel === "403" || r.statusLabel === "429",
+      linked: (r) => r.clientSiteFound === "Yes",
+      notlinked: (r) => r.clientSiteFound === "No",
+      duplicate: (r) => r.duplicate === "Yes",
+      rejected: (r) => r.clientSiteFound.startsWith("Rejected"),
+    };
+
+    function getFilteredRows() {
       const COLS = getCols();
       let rows = displayRows.slice();
+
+      const qf = QUICK_FILTERS[quickFilter.value] || QUICK_FILTERS.all;
+      rows = rows.filter(qf);
 
       for (const [k, v] of Object.entries(colFilters)) {
         if (!v) continue;
@@ -550,8 +579,15 @@
           return av.localeCompare(bv) * dir;
         });
       }
+      return rows;
+    }
+
+    function renderTable() {
+      const COLS = getCols();
+      const rows = getFilteredRows();
 
       resultCount.textContent = `${rows.length} of ${displayRows.length} rows`;
+      exportFilteredBtn.disabled = rows.length === 0;
 
       if (rows.length === 0) {
         tableWrap.innerHTML = '<div class="empty">No rows match.</div>';
@@ -592,6 +628,7 @@
     }
 
     globalSearch.oninput = renderTable;
+    quickFilter.onchange = renderTable;
     minDR.oninput = () => { buildDisplayRows(); renderTable(); renderSummary(); };
     minTraffic.oninput = () => { buildDisplayRows(); renderTable(); renderSummary(); };
     showDRCols.onchange = renderTable;
@@ -603,10 +640,10 @@
     }
 
     // ---------- CSV export + run history ----------
-    function buildCSVString() {
+    function buildCSVString(rows = displayRows) {
       const COLS = getCols();
       const header = COLS.map((c) => c.label).join(",");
-      const lines = displayRows.map((r) => COLS.map((c) => csvCell(r[c.key])).join(","));
+      const lines = rows.map((r) => COLS.map((c) => csvCell(r[c.key])).join(","));
       return header + "\n" + lines.join("\n");
     }
 
@@ -672,6 +709,8 @@
     runBtn.onclick = async () => {
       runBtn.disabled = true;
       exportBtn.disabled = true;
+      exportFilteredBtn.disabled = true;
+      quickFilter.value = "all";
       warningsEl.innerHTML = "";
       try {
         const csv = await getInputCSV();
@@ -744,6 +783,10 @@
 
     exportBtn.onclick = () => {
       downloadCSV(buildCSVString(), `backlink-check-${new Date().toISOString().slice(0, 10)}.csv`);
+    };
+
+    exportFilteredBtn.onclick = () => {
+      downloadCSV(buildCSVString(getFilteredRows()), `backlink-check-filtered-${new Date().toISOString().slice(0, 10)}.csv`);
     };
 
     // Show the password gate up front; first API call will confirm/reject it.
