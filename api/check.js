@@ -1,6 +1,7 @@
 import { requirePassword } from "./_auth.js";
 import { checkBacklink } from "./_linkcheck.js";
 import { getDomainMetrics } from "./_ahrefs.js";
+import { getMasterPaidLinks, normalizeLink } from "./_masterSheet.js";
 
 export const config = { api: { bodyParser: { sizeLimit: "5mb" } } };
 
@@ -62,6 +63,10 @@ export default async function handler(req, res) {
   // (the frontend uses it as an auth ping after the password gate) — it just
   // returns empty results rather than erroring.
 
+  // --- Cross-check against the Master Live Links sheet (previously-paid links) ---
+  const { map: masterLinks, warning: masterWarning } = await getMasterPaidLinks();
+  const masterWarnings = masterWarning ? [masterWarning] : [];
+
   // --- Live link checks (status code, keyword/page/client-site detection) ---
   const results = await mapLimit(rows, CONCURRENCY, async (row) => {
     const backlinkUrl = field(row, "Backlink URL", "Live URL", "Live Link", "Live Links");
@@ -79,6 +84,14 @@ export default async function handler(req, res) {
     if (!/^https?:\/\//i.test(urlToCheck)) urlToCheck = `https://${urlToCheck}`;
 
     const check = await checkBacklink({ url: urlToCheck, keyword, page, clientSite: blWebsite, anchorText });
+
+    // Flag if this exact live link was already paid for previously, per the master sheet.
+    const masterClient = masterLinks.get(normalizeLink(backlinkUrl));
+    if (masterClient !== undefined) {
+      check.duplicateInMaster = true;
+      check.duplicateInMasterClient = masterClient || null;
+    }
+
     return { ...row, _check: check, _referringHost: hostFromDomainOrUrl(domain, backlinkUrl) };
   });
 
@@ -105,5 +118,5 @@ export default async function handler(req, res) {
     }
   }
 
-  res.status(200).json({ results, domainMetrics, ahrefsWarnings });
+  res.status(200).json({ results, domainMetrics, ahrefsWarnings, masterWarnings });
 }
