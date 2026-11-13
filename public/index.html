@@ -79,7 +79,9 @@
     th { position: sticky; background: var(--panel); color: var(--muted); font-weight: 600; cursor: pointer; user-select: none; z-index: 1; top: 0; }
     .filterrow th { top: 29px; padding: 4px 6px; background: var(--panel2); cursor: default; }
     .filterrow input.fin { width: 100%; min-width: 60px; padding: 4px 6px; font-size: 11px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-sm); color: var(--text); }
-    td.url, td.wide { white-space: normal; max-width: 300px; word-break: break-all; }
+    td.wide { white-space: normal; max-width: 320px; word-break: break-word; }
+    td.url { max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+    td.url a { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
     tbody tr:hover { background: var(--panel2); }
     .pill { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; font-weight: 600; }
     .pill.ok { background: #dcfce7; color: #15803d; }
@@ -612,7 +614,7 @@
             const cls = c.wide ? ' class="wide"' : "";
             if (v == null || v === "") return `<td${cls}></td>`;
             if (isPill) return `<td${cls}><span class="pill ${pillClass(c.key, String(v))}">${v}</span></td>`;
-            if (c.key === "backlinkUrl") return `<td class="url"><a href="${v}" target="_blank" rel="noopener" style="color:inherit">${v}</a></td>`;
+            if (c.key === "backlinkUrl") return `<td class="url"><a href="${v}" title="${v}" target="_blank" rel="noopener" style="color:inherit">${v}</a></td>`;
             return `<td${cls}>${v}</td>`;
           }).join("")}</tr>`
         )
