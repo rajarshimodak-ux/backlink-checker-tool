@@ -29,12 +29,30 @@ function extractTitle(html) {
   return m ? decodeEntities(m[1]).replace(/\s+/g, " ").trim() : "";
 }
 
+// rel="nofollow" (and the "sponsored"/"ugc" hints, which Google treats the same
+// way — a hint not to pass ranking credit) all count as a no-follow link.
+function relFollowType(attrs) {
+  const m = /\brel\s*=\s*["']([^"']*)["']/i.exec(attrs || "");
+  const tokens = m ? m[1].toLowerCase().split(/\s+/) : [];
+  if (tokens.includes("nofollow")) return "No-follow";
+  if (tokens.includes("sponsored")) return "No-follow (sponsored)";
+  if (tokens.includes("ugc")) return "No-follow (UGC)";
+  return "Do-follow";
+}
+
 function extractAnchors(html) {
   const anchors = [];
-  const re = /<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  const re = /<a\b([^>]*)>([\s\S]*?)<\/a>/gi;
   let m;
   while ((m = re.exec(html || "")) !== null) {
-    anchors.push({ href: m[1].trim(), text: decodeEntities(stripTags(m[2])).trim() });
+    const attrs = m[1] || "";
+    const hrefMatch = /\bhref\s*=\s*["']([^"']+)["']/i.exec(attrs);
+    if (!hrefMatch) continue;
+    anchors.push({
+      href: hrefMatch[1].trim(),
+      text: decodeEntities(stripTags(m[2])).trim(),
+      followType: relFollowType(attrs),
+    });
   }
   return anchors;
 }
@@ -125,8 +143,51 @@ function isListingPageUrl(url) {
   return LISTING_PATH_PATTERNS.some((re) => re.test(path));
 }
 
+// Vendors sometimes place paid links on throwaway, auto-generated "publisher" domains
+// built only to host guest posts — not a genuine publication. These are usually a
+// generic/service word (often "seo") stuck together with other words and a trailing
+// run of digits, e.g. seobyhighsoftware99.com. Any such domain is rejected outright,
+// plus an explicit list of specific domains already seen and confirmed as this kind
+// of placement-mill site.
+const SPAM_DOMAIN_PATTERNS = [/seo.*\d{2,}$/i];
+
+const REJECTED_DOMAINS = new Set(["seobyhighsoftware99.com"]);
+
+function hostLabel(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./i, "").toLowerCase();
+  } catch {
+    return String(url || "")
+      .trim()
+      .replace(/^https?:\/\//i, "")
+      .replace(/^www\./i, "")
+      .split("/")[0]
+      .toLowerCase();
+  }
+}
+
+function isSpammyDomain(url) {
+  const host = hostLabel(url);
+  if (!host) return false;
+  if (REJECTED_DOMAINS.has(host)) return true;
+  const label = host.split(".")[0];
+  return SPAM_DOMAIN_PATTERNS.some((re) => re.test(label));
+}
+
 export async function checkBacklink(args) {
   const result = await checkBacklinkInner(args);
+  // A throwaway/auto-generated placement-mill domain isn't a real publication, no
+  // matter what its HTTP status or page content is — surface the real status, but reject it.
+  if (isSpammyDomain(args.url)) {
+    return {
+      ...result,
+      clientSiteFound: "Rejected (spammy/auto-generated domain)",
+      matchedAnchorText: "",
+      anchorTextMatch: "N/A",
+      linkType: "N/A",
+      error: "This domain looks auto-generated / disposable (a placement-mill site), not a genuine publication — rejected as an invalid backlink placement.",
+    };
+  }
   // An author/tag/category archive link isn't a real article placement, no matter
   // what its HTTP status or page content is — surface the real status, but reject it.
   if (isListingPageUrl(args.url)) {
@@ -135,6 +196,7 @@ export async function checkBacklink(args) {
       clientSiteFound: "Rejected (author/listing page)",
       matchedAnchorText: "",
       anchorTextMatch: "N/A",
+      linkType: "N/A",
       error: "This is an author/tag/category listing page, not a published article — rejected as an invalid backlink placement.",
     };
   }
@@ -192,6 +254,7 @@ async function checkBacklinkInner({ url, keyword, page, clientSite, anchorText }
         clientSiteFound: "N/A",
         matchedAnchorText: "",
         anchorTextMatch: "N/A",
+        linkType: "N/A",
         error: "Too many redirects",
       };
     }
@@ -221,6 +284,7 @@ async function checkBacklinkInner({ url, keyword, page, clientSite, anchorText }
         clientSiteFound: "N/A",
         matchedAnchorText: "",
         anchorTextMatch: "N/A",
+        linkType: "N/A",
         error:
           finalStatus === 403 || finalStatus === 429
             ? "Site blocked automated access (bot-protection) — verify the client link manually in a browser"
@@ -245,6 +309,7 @@ async function checkBacklinkInner({ url, keyword, page, clientSite, anchorText }
         clientSiteFound: "Rejected (sign-in wall)",
         matchedAnchorText: "",
         anchorTextMatch: "N/A",
+        linkType: "N/A",
         error: "Page requires sign-in/login to view content — rejected, could not verify the client link",
       };
     }
@@ -275,6 +340,7 @@ async function checkBacklinkInner({ url, keyword, page, clientSite, anchorText }
     let clientSiteFound = "N/A";
     let matchedAnchorText = "";
     let anchorTextMatch = "N/A";
+    let linkType = "N/A";
     if (clientSite && clientSite.trim()) {
       const clientHost = hostOf(clientSite);
       const matches = anchors.filter((a) => {
@@ -284,6 +350,9 @@ async function checkBacklinkInner({ url, keyword, page, clientSite, anchorText }
       if (matches.length > 0) {
         clientSiteFound = "Yes";
         matchedAnchorText = matches.map((m) => m.text).filter(Boolean).join(" | ");
+        // rel attribute (nofollow/sponsored/ugc vs. do-follow) on the actual link to the client's site.
+        const followTypes = [...new Set(matches.map((m) => m.followType))];
+        linkType = followTypes.length === 1 ? followTypes[0] : `Mixed (${followTypes.join(", ")})`;
         if (anchorText && anchorText.trim()) {
           const nExpected = normalize(anchorText);
           anchorTextMatch = matches.some((m) => {
@@ -312,6 +381,7 @@ async function checkBacklinkInner({ url, keyword, page, clientSite, anchorText }
       clientSiteFound,
       matchedAnchorText,
       anchorTextMatch,
+      linkType,
       error: null,
     };
   } catch (e) {

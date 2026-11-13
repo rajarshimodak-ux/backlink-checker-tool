@@ -171,7 +171,7 @@
         <h1>Backlink Checker</h1>
       </div>
     </div>
-    <p>Upload a sheet with just <strong>Client Name</strong> and <strong>Live Link</strong>. The tool checks each link's status code, confirms the client is actually linked on the page, flags duplicate links (in this sheet and against previously paid links), and rejects sign-in/login-walled or author/listing pages. No other columns needed.</p>
+    <p>Upload a sheet with just <strong>Client Name</strong> and <strong>Live Link</strong>. The tool checks each link's status code, confirms the client is actually linked on the page (and whether it's do-follow or no-follow), flags duplicate links (in this sheet and against previously paid links), and rejects sign-in/login-walled, author/listing, or spammy auto-generated placement pages. No other columns needed.</p>
   </header>
 
   <main>
@@ -254,6 +254,8 @@
           <option value="notlinked">Client not linked</option>
           <option value="duplicate">Duplicate links</option>
           <option value="rejected">Rejected</option>
+          <option value="dofollow">Do-follow</option>
+          <option value="nofollow">No-follow</option>
         </select>
         <button id="exportFilteredBtn" class="ghost" style="width:auto;margin:0;" disabled>Export filtered</button>
         <div class="grow"></div>
@@ -481,6 +483,7 @@
           statusLabel: c.statusLabel || "",
           clientSiteFound: c.clientSiteFound || "",
           matchedAnchorText: c.matchedAnchorText || "",
+          linkType: c.linkType && c.linkType !== "N/A" ? c.linkType : "",
           dr: m.domainRating ?? null,
           traffic: m.orgTraffic ?? null,
           quality: quality(m.domainRating ?? null, m.orgTraffic ?? null),
@@ -497,6 +500,7 @@
       { key: "statusLabel", label: "Status Code" },
       { key: "clientSiteFound", label: "Client Linked" },
       { key: "matchedAnchorText", label: "Linked Anchor Text", wide: true },
+      { key: "linkType", label: "Link Type" },
       { key: "notes", label: "Notes", wide: true },
     ];
     const DR_COLS = [
@@ -505,7 +509,7 @@
       { key: "quality", label: "Quality" },
     ];
     function getCols() {
-      return showDRCols.checked ? [...CORE_COLS.slice(0, 7), ...DR_COLS, CORE_COLS[7]] : CORE_COLS;
+      return showDRCols.checked ? [...CORE_COLS.slice(0, 8), ...DR_COLS, CORE_COLS[8]] : CORE_COLS;
     }
     let colFilters = {};
 
@@ -553,6 +557,8 @@
       notlinked: (r) => r.clientSiteFound === "No",
       duplicate: (r) => r.duplicate === "Yes",
       rejected: (r) => r.clientSiteFound.startsWith("Rejected"),
+      dofollow: (r) => r.linkType === "Do-follow",
+      nofollow: (r) => r.linkType.startsWith("No-follow"),
     };
 
     function getFilteredRows() {
@@ -809,7 +815,7 @@
       },
       {
         q: "Why was a link rejected?",
-        a: "A link is rejected if the page requires sign-in/login to view (we can't verify it), or if the URL is an author/tag/category listing page instead of a real article. Check the Notes column for the exact reason.",
+        a: "A link is rejected if the page requires sign-in/login to view (we can't verify it), if the URL is an author/tag/category listing page instead of a real article, or if the domain looks like a spammy auto-generated placement-mill site (e.g. seobyhighsoftware99.com). Check the Notes column for the exact reason.",
       },
       {
         q: "What does Status Code mean?",
