@@ -111,7 +111,37 @@ function looksLikeSignInWall(title, plainText) {
   return plainText.length < 1500 || /^(sign ?in|log ?in|member login)/i.test(title.trim());
 }
 
-export async function checkBacklink({ url, keyword, page, clientSite, anchorText }) {
+// A link to an author/tag/category archive page isn't a real article placement —
+// vendors sometimes submit these instead of (or alongside) the actual published post.
+const LISTING_PATH_PATTERNS = [/\/author\//i, /\/tag\//i, /\/category\//i, /\/author$/i];
+
+function isListingPageUrl(url) {
+  let path = "";
+  try {
+    path = new URL(url).pathname;
+  } catch {
+    path = String(url || "");
+  }
+  return LISTING_PATH_PATTERNS.some((re) => re.test(path));
+}
+
+export async function checkBacklink(args) {
+  const result = await checkBacklinkInner(args);
+  // An author/tag/category archive link isn't a real article placement, no matter
+  // what its HTTP status or page content is — surface the real status, but reject it.
+  if (isListingPageUrl(args.url)) {
+    return {
+      ...result,
+      clientSiteFound: "Rejected (author/listing page)",
+      matchedAnchorText: "",
+      anchorTextMatch: "N/A",
+      error: "This is an author/tag/category listing page, not a published article — rejected as an invalid backlink placement.",
+    };
+  }
+  return result;
+}
+
+async function checkBacklinkInner({ url, keyword, page, clientSite, anchorText }) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 

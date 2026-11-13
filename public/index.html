@@ -9,9 +9,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #0b0d11; --panel: #14171d; --panel2: #1a1e26; --line: #272c35;
-      --text: #e8eaed; --muted: #8b93a3; --accent: #0070ff; --accent-dark: #0059cc; --accent2: #2f9bff;
-      --ok: #22c55e; --err: #f43f5e; --warn: #f59e0b;
+      --bg: #f5f7fa; --panel: #ffffff; --panel2: #f1f4f8; --line: #e3e8ef;
+      --text: #1c2230; --muted: #6b7484; --accent: #0070ff; --accent-dark: #0059cc; --accent2: #0070ff;
+      --ok: #16a34a; --err: #e11d48; --warn: #c2760c;
       --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px;
     }
     * { box-sizing: border-box; }
@@ -52,6 +52,10 @@
     textarea:focus, input:focus, select:focus { outline: none; border-color: var(--accent); }
     textarea { min-height: 90px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
     .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .tabs { display: flex; gap: 4px; background: var(--panel2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 3px; margin-bottom: 10px; }
+    .tabs .tab { flex: 1; background: transparent; color: var(--muted); font-size: 12px; padding: 7px 6px; width: auto; margin: 0; }
+    .tabs .tab.active { background: var(--panel); color: var(--text); box-shadow: 0 1px 2px rgba(28,34,48,.08); }
+    .tabpane.hidden { display: none; }
     .hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
     .sep { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
     button {
@@ -76,17 +80,17 @@
     .filterrow th { top: 29px; padding: 4px 6px; background: var(--panel2); cursor: default; }
     .filterrow input.fin { width: 100%; min-width: 60px; padding: 4px 6px; font-size: 11px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-sm); color: var(--text); }
     td.url, td.wide { white-space: normal; max-width: 300px; word-break: break-all; }
-    tbody tr:hover { background: var(--panel); }
+    tbody tr:hover { background: var(--panel2); }
     .pill { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; font-weight: 600; }
-    .pill.ok { background: #0f3c22; color: #4ade80; }
-    .pill.bad { background: #3f1620; color: var(--err); }
-    .pill.warn { background: #3a2c0d; color: var(--warn); }
-    .pill.muted { background: #22262f; color: var(--muted); }
+    .pill.ok { background: #dcfce7; color: #15803d; }
+    .pill.bad { background: #fee2e2; color: #be123c; }
+    .pill.warn { background: #fef3c7; color: #92400e; }
+    .pill.muted { background: #eef1f5; color: var(--muted); }
     .empty { color: var(--muted); padding: 48px 24px; text-align: center; font-size: 13.5px; }
     .empty .big { font-size: 15px; color: var(--text); font-weight: 600; margin-bottom: 6px; }
     .err { color: var(--err); }
-    .warnbox { background: #2a1d12; border: 1px solid #5a3a1a; color: #ffcc99; padding: 8px 12px; border-radius: var(--radius-sm); margin: 12px 20px 0; font-size: 12px; }
-    .gate { position: fixed; inset: 0; background: rgba(6,8,12,.94); display: flex; align-items: center; justify-content: center; z-index: 50; }
+    .warnbox { background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; padding: 8px 12px; border-radius: var(--radius-sm); margin: 12px 20px 0; font-size: 12px; }
+    .gate { position: fixed; inset: 0; background: rgba(28,34,48,.45); display: flex; align-items: center; justify-content: center; z-index: 50; }
     .gate.hidden { display: none; }
     .gate .box { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 26px; width: 320px; }
     .gate h2 { margin: 0 0 4px; font-size: 16px; }
@@ -114,9 +118,39 @@
     .stat { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 10px 14px; min-width: 110px; }
     .stat .n { font-size: 20px; font-weight: 700; }
     .stat .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
-    .stat.ok .n { color: #4ade80; }
+    .stat.ok .n { color: #15803d; }
     .stat.bad .n { color: var(--err); }
     .stat.warn .n { color: var(--warn); }
+
+    /* Help bot widget */
+    .bot-toggle {
+      position: fixed; right: 22px; bottom: 22px; z-index: 60; width: 52px; height: 52px; border-radius: 50%;
+      background: var(--accent); color: #fff; font-size: 22px; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 6px 18px rgba(0,112,255,.35); margin: 0;
+    }
+    .bot-toggle:hover { background: var(--accent-dark); }
+    .bot-panel {
+      position: fixed; right: 22px; bottom: 86px; z-index: 60; width: 320px; max-height: 440px;
+      background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-lg);
+      box-shadow: 0 12px 32px rgba(28,34,48,.18); display: flex; flex-direction: column; overflow: hidden;
+    }
+    .bot-panel.hidden { display: none; }
+    .bot-head { padding: 12px 14px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
+    .bot-head .t { font-weight: 700; font-size: 13.5px; }
+    .bot-head .close { background: none; border: none; color: var(--muted); font-size: 18px; width: auto; padding: 0; margin: 0; line-height: 1; }
+    .bot-body { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+    .bot-msg { font-size: 12.5px; padding: 8px 10px; border-radius: var(--radius-sm); max-width: 90%; }
+    .bot-msg.bot { background: var(--panel2); color: var(--text); align-self: flex-start; }
+    .bot-msg.user { background: var(--accent); color: #fff; align-self: flex-end; }
+    .bot-quick { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
+    .bot-quick button {
+      background: var(--panel2); color: var(--accent2); border: 1px solid var(--line); text-align: left;
+      font-size: 12px; font-weight: 500; padding: 7px 10px; width: 100%; margin: 0;
+    }
+    .bot-quick button:hover { border-color: var(--accent); }
+    .bot-foot { padding: 10px; border-top: 1px solid var(--line); display: flex; gap: 6px; }
+    .bot-foot input { margin: 0; }
+    .bot-foot button { width: auto; margin: 0; padding: 9px 12px; background: var(--accent); color: #fff; }
   </style>
 </head>
 <body>
@@ -137,43 +171,60 @@
         <h1>Backlink Checker</h1>
       </div>
     </div>
-    <p>Paste a sheet with just <strong>Client Name</strong> and <strong>Live Link</strong> — we check each link's status code, confirm the client is actually linked on the live page, and pull the referring domain's DR &amp; organic traffic automatically. No other columns needed.</p>
+    <p>Upload a sheet with just <strong>Client Name</strong> and <strong>Live Link</strong>. The tool checks each link's status code, confirms the client is actually linked on the page, flags duplicate links (in this sheet and against previously paid links), and rejects sign-in/login-walled or author/listing pages. No other columns needed.</p>
   </header>
 
   <main>
     <section class="controls">
       <div class="steps">
-        <div class="step"><div class="num">1</div><div class="txt"><b>Add your sheet</b><div class="sub">Paste, upload a CSV, or link a Google Sheet below</div></div></div>
-        <div class="step"><div class="num">2</div><div class="txt"><b>Run checks</b><div class="sub">We check every live link and referring domain automatically</div></div></div>
+        <div class="step"><div class="num">1</div><div class="txt"><b>Add your sheet</b><div class="sub">Paste, upload a CSV, or link a Google Sheet below — just Client Name + Live Link</div></div></div>
+        <div class="step"><div class="num">2</div><div class="txt"><b>Run checks</b><div class="sub">Status code, client-link check, duplicates, and sign-in/login walls — all automatic</div></div></div>
         <div class="step"><div class="num">3</div><div class="txt"><b>Export or revisit</b><div class="sub">Download the results now, or grab them later from History</div></div></div>
       </div>
 
-      <label for="csvText">Paste your sheet</label>
-      <textarea id="csvText" placeholder="Client Name,Live Link&#10;acme.com,https://example.com/blog/our-review-of-acme&#10;globex.com,https://anotherblog.com/best-tools-2026"></textarea>
-      <div class="hint">Just two columns: <strong>Client Name</strong> and <strong>Live Link</strong>.</div>
+      <label style="margin-bottom:8px;">Add your sheet</label>
+      <div class="tabs" id="inputTabs">
+        <button type="button" class="tab active" data-tab="paste">Paste text</button>
+        <button type="button" class="tab" data-tab="file">Upload CSV</button>
+        <button type="button" class="tab" data-tab="sheet">Google Sheet</button>
+      </div>
 
-      <label for="csvFile">...or upload a CSV file</label>
-      <input id="csvFile" type="file" accept=".csv,text/csv" />
-      <div id="fileName" class="filename"></div>
+      <div class="tabpane" data-pane="paste">
+        <textarea id="csvText" placeholder="Client Name,Live Link&#10;acme.com,https://example.com/blog/our-review-of-acme&#10;globex.com,https://anotherblog.com/best-tools-2026"></textarea>
+        <div class="hint">Just two columns: <strong>Client Name</strong> and <strong>Live Link</strong>.</div>
+      </div>
 
-      <label for="sheetUrl">...or a public Google Sheet link</label>
-      <input id="sheetUrl" type="text" placeholder="https://docs.google.com/spreadsheets/d/.../edit" />
-      <div class="hint">Sheet must be shared as "Anyone with the link can view". For live write-back into the sheet itself, use the Apps Script in /apps-script instead.</div>
+      <div class="tabpane hidden" data-pane="file">
+        <input id="csvFile" type="file" accept=".csv,text/csv" />
+        <div id="fileName" class="filename"></div>
+      </div>
+
+      <div class="tabpane hidden" data-pane="sheet">
+        <input id="sheetUrl" type="text" placeholder="https://docs.google.com/spreadsheets/d/.../edit" />
+        <div class="hint">Sheet must be shared as "Anyone with the link can view".</div>
+      </div>
 
       <hr class="sep" />
 
-      <label>Quality thresholds</label>
-      <div class="row2">
-        <div>
-          <div class="hint">Min DR</div>
-          <input id="minDR" type="number" value="30" min="0" max="100" />
+      <details id="advancedBox">
+        <summary style="cursor:pointer;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em;font-weight:600;">Advanced: DR / Traffic (optional)</summary>
+        <div style="margin-top:10px;">
+          <label id="showDRLabel" style="display:flex;align-items:center;gap:8px;margin:0 0 10px;text-transform:none;letter-spacing:0;font-weight:500;color:var(--text);">
+            <input id="showDRCols" type="checkbox" style="width:auto;" /> Show DR &amp; Traffic columns in results
+          </label>
+          <div class="row2">
+            <div>
+              <div class="hint">Min DR</div>
+              <input id="minDR" type="number" value="30" min="0" max="100" />
+            </div>
+            <div>
+              <div class="hint">Min monthly traffic</div>
+              <input id="minTraffic" type="number" value="500" min="0" />
+            </div>
+          </div>
+          <div class="hint">Only used to label the "Quality" column if shown — doesn't affect the core checks.</div>
         </div>
-        <div>
-          <div class="hint">Min monthly traffic</div>
-          <input id="minTraffic" type="number" value="500" min="0" />
-        </div>
-      </div>
-      <div class="hint">Used only to label the "Quality" column — doesn't affect the live-link check itself.</div>
+      </details>
 
       <button id="runBtn" class="primary">Run checks</button>
       <button id="exportBtn" class="ghost" disabled>Export CSV</button>
@@ -200,12 +251,25 @@
       <div id="tableWrap">
         <div class="empty">
           <div class="big">Add your Client Name + Live Link rows on the left</div>
-          Then click "Run checks" to verify every live link and pull DR &amp; traffic.
+          Then click "Run checks" to verify status codes, client links, duplicates, and sign-in walls.
         </div>
       </div>
       <div id="warnings"></div>
     </section>
   </main>
+
+  <button id="botToggle" class="bot-toggle" title="Help">?</button>
+  <div id="botPanel" class="bot-panel hidden">
+    <div class="bot-head">
+      <div class="t">Need a hand?</div>
+      <button class="close" id="botClose">&times;</button>
+    </div>
+    <div class="bot-body" id="botBody"></div>
+    <div class="bot-foot">
+      <input id="botInput" type="text" placeholder="Ask a question…" />
+      <button id="botSend">Send</button>
+    </div>
+  </div>
 
   <script>
     const PASS_KEY = "backlink_checker_pass";
@@ -323,10 +387,19 @@
     const warningsEl = document.getElementById("warnings");
     const minDR = document.getElementById("minDR");
     const minTraffic = document.getElementById("minTraffic");
+    const showDRCols = document.getElementById("showDRCols");
     const historyList = document.getElementById("historyList");
     const clearHistBtn = document.getElementById("clearHistBtn");
 
     csvFile.onchange = () => { fileName.textContent = csvFile.files[0]?.name || ""; };
+
+    // ---------- input tabs ----------
+    document.querySelectorAll("#inputTabs .tab").forEach((btn) => {
+      btn.onclick = () => {
+        document.querySelectorAll("#inputTabs .tab").forEach((b) => b.classList.toggle("active", b === btn));
+        document.querySelectorAll(".tabpane").forEach((p) => p.classList.toggle("hidden", p.dataset.pane !== btn.dataset.tab));
+      };
+    });
 
     function setProgress(pct, text) {
       progress.style.display = "block";
@@ -372,23 +445,38 @@
         const referringDomain = hostOf(field(r.raw, "Domain") || backlinkUrl);
         const m = domainMetricsCache[referringDomain] || {};
         const c = r.check || {};
+
+        // Merge in-sheet duplicate detection with the server-side master-sheet
+        // (already-paid-links) check into one clear signal + reason.
+        const inSheetDup = duplicateLinks.has(normalizeLink(backlinkUrl));
+        const inMasterDup = !!c.duplicateInMaster;
+        let duplicate = "No";
+        const dupReasons = [];
+        if (inSheetDup) { duplicate = "Yes"; dupReasons.push("appears more than once in this sheet"); }
+        if (inMasterDup) {
+          duplicate = "Yes";
+          dupReasons.push(`already paid previously${c.duplicateInMasterClient ? ` (client: ${c.duplicateInMasterClient})` : ""}`);
+        }
+
+        const notes = [c.error, dupReasons.length ? `Duplicate: ${dupReasons.join("; ")}` : ""].filter(Boolean).join(" | ");
+
         return {
           client: field(r.raw, ...CLIENT_ALIASES),
           referringDomain,
           backlinkUrl,
-          duplicate: duplicateLinks.has(normalizeLink(backlinkUrl)) ? "Yes" : "No",
+          duplicate,
           statusLabel: c.statusLabel || "",
           clientSiteFound: c.clientSiteFound || "",
           matchedAnchorText: c.matchedAnchorText || "",
           dr: m.domainRating ?? null,
           traffic: m.orgTraffic ?? null,
           quality: quality(m.domainRating ?? null, m.orgTraffic ?? null),
-          notes: c.error || "",
+          notes,
         };
       });
     }
 
-    const COLS = [
+    const CORE_COLS = [
       { key: "client", label: "Client" },
       { key: "referringDomain", label: "Referring Domain" },
       { key: "backlinkUrl", label: "Live Link", wide: true },
@@ -396,11 +484,16 @@
       { key: "statusLabel", label: "Status Code" },
       { key: "clientSiteFound", label: "Client Linked" },
       { key: "matchedAnchorText", label: "Linked Anchor Text", wide: true },
+      { key: "notes", label: "Notes", wide: true },
+    ];
+    const DR_COLS = [
       { key: "dr", label: "DR", numeric: true },
       { key: "traffic", label: "Traffic", numeric: true },
       { key: "quality", label: "Quality" },
-      { key: "notes", label: "Notes", wide: true },
     ];
+    function getCols() {
+      return showDRCols.checked ? [...CORE_COLS.slice(0, 7), ...DR_COLS, CORE_COLS[7]] : CORE_COLS;
+    }
     let colFilters = {};
 
     function pillClass(key, val) {
@@ -432,11 +525,12 @@
         <div class="stat bad"><div class="n">${broken}</div><div class="l">Broken (4xx/5xx)</div></div>
         <div class="stat warn"><div class="n">${blocked}</div><div class="l">Blocked / unverifiable</div></div>
         <div class="stat bad"><div class="n">${duplicates}</div><div class="l">Duplicate links</div></div>
-        <div class="stat bad"><div class="n">${rejected}</div><div class="l">Rejected (sign-in wall)</div></div>
+        <div class="stat bad"><div class="n">${rejected}</div><div class="l">Rejected (sign-in/listing page)</div></div>
       `;
     }
 
     function renderTable() {
+      const COLS = getCols();
       let rows = displayRows.slice();
 
       for (const [k, v] of Object.entries(colFilters)) {
@@ -500,6 +594,7 @@
     globalSearch.oninput = renderTable;
     minDR.oninput = () => { buildDisplayRows(); renderTable(); renderSummary(); };
     minTraffic.oninput = () => { buildDisplayRows(); renderTable(); renderSummary(); };
+    showDRCols.onchange = renderTable;
 
     function chunk(arr, size) {
       const out = [];
@@ -509,6 +604,7 @@
 
     // ---------- CSV export + run history ----------
     function buildCSVString() {
+      const COLS = getCols();
       const header = COLS.map((c) => c.label).join(",");
       const lines = displayRows.map((r) => COLS.map((c) => csvCell(r[c.key])).join(","));
       return header + "\n" + lines.join("\n");
@@ -625,6 +721,7 @@
             method: "POST",
             body: { rows: rowChunks[i].map((r) => r.raw), resolveRowDomains: false },
           });
+          if (data.masterWarnings?.length) warnings.push(...data.masterWarnings);
           data.results.forEach((res, idx) => { rowChunks[i][idx].check = res._check; });
           buildDisplayRows();
           renderTable();
@@ -652,6 +749,106 @@
     // Show the password gate up front; first API call will confirm/reject it.
     if (!getPass()) gate.classList.remove("hidden");
     renderHistory();
+
+    // ---------- help bot (simple on-page FAQ, no network calls) ----------
+    const FAQ = [
+      {
+        q: "How do I start?",
+        a: "Go to the left panel, pick a tab (Paste text / Upload CSV / Google Sheet), add rows with a Client Name and Live Link column, then click \"Run checks\".",
+      },
+      {
+        q: "What columns do I need?",
+        a: "Just two: Client Name and Live Link. Column names like \"Client\", \"BL Website\", \"Live URL\" or \"Backlink URL\" also work.",
+      },
+      {
+        q: "What does the Duplicate column mean?",
+        a: "\"Yes\" means that link either appears more than once in your sheet, or it was already paid for before (checked against the Master Live Links sheet). Hover the Notes column for the exact reason.",
+      },
+      {
+        q: "Why was a link rejected?",
+        a: "A link is rejected if the page requires sign-in/login to view (we can't verify it), or if the URL is an author/tag/category listing page instead of a real article. Check the Notes column for the exact reason.",
+      },
+      {
+        q: "What does Status Code mean?",
+        a: "It's the HTTP status of the live link (e.g. 200 = live, 404 = broken, 403/429 = blocked). If it redirected, you'll see the full chain like 301 → 200.",
+      },
+      {
+        q: "How do I export results?",
+        a: "Click \"Export CSV\" on the left once a run finishes, or revisit any past run from the History list below it — every run is saved automatically in this browser.",
+      },
+      {
+        q: "Where do I see DR and traffic?",
+        a: "Open \"Advanced: DR / Traffic\" above the Run button and tick \"Show DR & Traffic columns\" — they're hidden by default to keep the results simple.",
+      },
+    ];
+
+    const botToggle = document.getElementById("botToggle");
+    const botPanel = document.getElementById("botPanel");
+    const botClose = document.getElementById("botClose");
+    const botBody = document.getElementById("botBody");
+    const botInput = document.getElementById("botInput");
+    const botSend = document.getElementById("botSend");
+
+    function botAddMsg(text, who) {
+      const div = document.createElement("div");
+      div.className = `bot-msg ${who}`;
+      div.textContent = text;
+      botBody.appendChild(div);
+      botBody.scrollTop = botBody.scrollHeight;
+    }
+
+    function botShowQuickReplies() {
+      const wrap = document.createElement("div");
+      wrap.className = "bot-quick";
+      FAQ.forEach((item) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.textContent = item.q;
+        b.onclick = () => botAsk(item.q);
+        wrap.appendChild(b);
+      });
+      botBody.appendChild(wrap);
+      botBody.scrollTop = botBody.scrollHeight;
+    }
+
+    function botAnswer(question) {
+      const nq = question.trim().toLowerCase();
+      let best = null, bestScore = 0;
+      for (const item of FAQ) {
+        const words = item.q.toLowerCase().split(/\W+/).filter((w) => w.length > 2);
+        const score = words.filter((w) => nq.includes(w)).length;
+        if (score > bestScore) { bestScore = score; best = item; }
+      }
+      return best && bestScore > 0
+        ? best.a
+        : "I'm not sure about that one — try one of the quick questions below, or check the Notes column in your results for details on a specific row.";
+    }
+
+    function botAsk(question) {
+      botAddMsg(question, "user");
+      setTimeout(() => botAddMsg(botAnswer(question), "bot"), 200);
+    }
+
+    let botStarted = false;
+    function botStart() {
+      if (botStarted) return;
+      botStarted = true;
+      botAddMsg("Hi! I can help you use this tool. Ask a question or pick one below.", "bot");
+      botShowQuickReplies();
+    }
+
+    botToggle.onclick = () => {
+      botPanel.classList.toggle("hidden");
+      if (!botPanel.classList.contains("hidden")) botStart();
+    };
+    botClose.onclick = () => botPanel.classList.add("hidden");
+    botSend.onclick = () => {
+      const v = botInput.value.trim();
+      if (!v) return;
+      botInput.value = "";
+      botAsk(v);
+    };
+    botInput.onkeydown = (e) => { if (e.key === "Enter") botSend.onclick(); };
   </script>
 </body>
 </html>
